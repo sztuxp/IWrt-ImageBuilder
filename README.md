@@ -1,3 +1,13 @@
+# 补充说明
+**想自己增加插件，在下面两个位置搜索，如果能找到，就可以集成** <br>
+> (https://mirrors.sjtug.sjtu.edu.cn/immortalwrt/releases/24.10.6/targets/armsr/armv8/kmods/6.6.133-1-07f627a3918c58c773f85279718bb442)。  <br>
+> https://mirrors.sjtug.sjtu.edu.cn/immortalwrt/releases/24.10.6/packages/ <br>
+
+**集成的方法就是在shell/custom-packages.sh 或者 shell/apk-custom-packages.sh 里添加, 格式如下** <br>
+> CUSTOM_PACKAGES="$CUSTOM_PACKAGES kmod-usb-net-rtl8152-vendor" <br>
+> CUSTOM_PACKAGES="$CUSTOM_PACKAGES kmod-usb-net-rtl8152" <br>
+> CUSTOM_PACKAGES="$CUSTOM_PACKAGES luci-proto-wireguard" <br>
+
 # [新手指导](https://github.com/wukongdaily/AutoBuildImmortalWrt/wiki) 👈🏻
 # ImmortalWrt-ImageBuilder
 
