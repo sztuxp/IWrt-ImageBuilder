@@ -238,6 +238,9 @@ jobs:
               -e PROFILE=$profile \
               -e INCLUDE_DOCKER=$include_docker \
               -e ROOTFS_PARTSIZE=$rootfs_partsize \
+              -e INCLUDE_DOCKER=$include_docker \
+              -e ROOTFS_PARTSIZE=$rootfs_partsize \
+              -e LUCI_VERSION=$luci_version \
               immortalwrt/imagebuilder:armsr-armv8-openwrt-${luci_version} /bin/bash /home/build/immortalwrt/build.sh
           done
           
@@ -273,6 +276,11 @@ jobs:
       - name: Rename .img.gz file
         id: rename
         run: |
+          # 生成自定义的版本号 (YY.MM.序号)
+          VERSION_TAG="$(date +%y.%m).${{ github.run_number }}"
+          echo "VERSION_TAG=$VERSION_TAG" >> $GITHUB_ENV
+          echo "Generated Version Tag: $VERSION_TAG"
+
           FILE=$(ls ${{ env.PACKAGED_OUTPUTPATH }}/*.img.gz | head -n1)
           echo "Image file is: $FILE"
           FILENAME=$(basename "$FILE")
@@ -282,17 +290,16 @@ jobs:
 
           if [ -n "$PREBUILT_LUCI_VERSION" ]; then
              echo "PREBUILT_LUCI_VERSION is not empty: $PREBUILT_LUCI_VERSION"
-             mv "$FILE" "${{ env.PACKAGED_OUTPUTPATH }}/immortalwrt-$PREBUILT_LUCI_VERSION-phicomm-n1-btrfs-$KERNEL_VERSION.img.gz"
+             mv "$FILE" "${{ env.PACKAGED_OUTPUTPATH }}/immortalwrt-$PREBUILT_LUCI_VERSION-phicomm-n1-btrfs-$KERNEL_VERSION-$VERSION_TAG.img.gz"
           else
-             mv "$FILE" "${{ env.PACKAGED_OUTPUTPATH }}/immortalwrt-$LUCI_VERSION-phicomm-n1-btrfs-$KERNEL_VERSION.img.gz"
+             mv "$FILE" "${{ env.PACKAGED_OUTPUTPATH }}/immortalwrt-$LUCI_VERSION-phicomm-n1-btrfs-$KERNEL_VERSION-$VERSION_TAG.img.gz"
           fi
-
 
       - name: Upload firmware to GitHub Releases
         uses: softprops/action-gh-release@v2.2.1
         with:
-          tag_name: phicomm-n1
-          name: ImmortalWrt for Phicomm N1
+          tag_name: phicomm-n1-${{ env.VERSION_TAG }}
+          name: ImmortalWrt for Phicomm N1 [${{ env.VERSION_TAG }}]
           body_path: ${{ github.workspace }}/n1/info1.md
           files: |
             ${{ env.PACKAGED_OUTPUTPATH }}/*.img.gz
