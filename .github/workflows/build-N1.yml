@@ -320,7 +320,7 @@ jobs:
         uses: softprops/action-gh-release@v2.2.1
         with:
           tag_name: n1-${{ env.VERSION_TAG }}
-          name: iWrt for Phicomm N1 [${{ env.VERSION_TAG }}]
+          name: iWrt for N1 [${{ env.VERSION_TAG }}]
           body_path: ${{ github.workspace }}/n1/info1.md
           files: |
             ${{ env.PACKAGED_OUTPUTPATH }}/*.img.gz
