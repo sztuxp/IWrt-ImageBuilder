@@ -281,7 +281,10 @@ jobs:
           
           # 2. 查询当前仓库中以当前年月开头的所有 Release Tag 数量，以此作为基础序号
           echo "正在获取本月已发布的固件数量..."
-          MONTH_COUNT=$(gh release list --limit 100 --json tagName --jq "[.[] | .tagName | select(contains(\"n1-$YEAR_MONTH\"))] | length")
+          MONTH_COUNT=$(gh release list --limit 100 --json tagName --jq "[.[] | .tagName | select(contains(\"n1-$YEAR_MONTH\"))] | length" 2>/dev/null || echo "0")
+          if [ -z "$MONTH_COUNT" ]; then
+            MONTH_COUNT=0
+          fi
           
           # 3. 序号加 1 得到本次的序号
           NEXT_NUM=$((MONTH_COUNT + 1))
@@ -291,22 +294,27 @@ jobs:
           echo "VERSION_TAG=$VERSION_TAG" >> $GITHUB_ENV
           echo "Generated Monthly Reset Version Tag: $VERSION_TAG"
 
-          # 5. 重命名固件文件结构
-          FILE=$(ls ${{ env.PACKAGED_OUTPUTPATH }}/*.img.gz | head -n1)
-          echo "Image file is: $FILE"
+          # 5. 检查并重命名固件
+          FILE=$(find ${{ env.PACKAGED_OUTPUTPATH }} -type f -name "*.img.gz" | head -n1)
+          if [ -z "$FILE" ]; then
+             echo "❌ 错误: 未能在编译输出目录中找到 .img.gz 固件。"
+             exit 1
+          fi
+          
+          echo "Image file found: $FILE"
           FILENAME=$(basename "$FILE")
           echo "FILENAME=$FILENAME" >> $GITHUB_ENV
-          KERNEL_VERSION=$(echo "$FILENAME" | grep -oP 'k\d+\.\d+\.\d+')
+          KERNEL_VERSION=$(echo "$FILENAME" | grep -oP 'k\d+\.\d+\.\d+' || echo "unknown-kernel")
           LUCI_VERSION="${{ github.event.inputs.luci_version }}"
 
           if [ -n "$PREBUILT_LUCI_VERSION" ]; then
              echo "PREBUILT_LUCI_VERSION is not empty: $PREBUILT_LUCI_VERSION"
-             # 格式：iwrt-24.10.2-n1-k6.6.93-26.06.1.img.gz
              mv "$FILE" "${{ env.PACKAGED_OUTPUTPATH }}/iwrt-$PREBUILT_LUCI_VERSION-n1-$KERNEL_VERSION-$VERSION_TAG.img.gz"
           else
-             # 格式：iwrt-24.10.6-n1-k6.6.93-26.06.1.img.gz
              mv "$FILE" "${{ env.PACKAGED_OUTPUTPATH }}/iwrt-$LUCI_VERSION-n1-$KERNEL_VERSION-$VERSION_TAG.img.gz"
           fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} # 💡 关键修改：这里的名字必须是 GH_TOKEN
           
       - name: Upload firmware to GitHub Releases
         uses: softprops/action-gh-release@v2.2.1
