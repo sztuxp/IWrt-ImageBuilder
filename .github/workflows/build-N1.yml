@@ -276,11 +276,22 @@ jobs:
       - name: Rename .img.gz file
         id: rename
         run: |
-          # 生成自定义的版本号 (YY.MM.序号)
-          VERSION_TAG="$(date +%y.%m).${{ github.run_number }}"
+          # 1. 获取当前年月 (如 26.06)
+          YEAR_MONTH="$(date +%y.%m)"
+          
+          # 2. 查询当前仓库中以当前年月开头的所有 Release Tag 数量，以此作为基础序号
+          echo "正在获取本月已发布的固件数量..."
+          MONTH_COUNT=$(gh release list --limit 100 --json tagName --jq "[.[] | .tagName | select(contains(\"n1-$YEAR_MONTH\"))] | length")
+          
+          # 3. 序号加 1 得到本次的序号
+          NEXT_NUM=$((MONTH_COUNT + 1))
+          
+          # 4. 组合成最终版本号 (如 26.06.1)
+          VERSION_TAG="${YEAR_MONTH}.${NEXT_NUM}"
           echo "VERSION_TAG=$VERSION_TAG" >> $GITHUB_ENV
-          echo "Generated Version Tag: $VERSION_TAG"
+          echo "Generated Monthly Reset Version Tag: $VERSION_TAG"
 
+          # 5. 重命名固件文件结构
           FILE=$(ls ${{ env.PACKAGED_OUTPUTPATH }}/*.img.gz | head -n1)
           echo "Image file is: $FILE"
           FILENAME=$(basename "$FILE")
@@ -290,16 +301,18 @@ jobs:
 
           if [ -n "$PREBUILT_LUCI_VERSION" ]; then
              echo "PREBUILT_LUCI_VERSION is not empty: $PREBUILT_LUCI_VERSION"
-             mv "$FILE" "${{ env.PACKAGED_OUTPUTPATH }}/immortalwrt-$PREBUILT_LUCI_VERSION-phicomm-n1-btrfs-$KERNEL_VERSION-$VERSION_TAG.img.gz"
+             # 格式：iwrt-24.10.2-n1-k6.6.93-26.06.1.img.gz
+             mv "$FILE" "${{ env.PACKAGED_OUTPUTPATH }}/iwrt-$PREBUILT_LUCI_VERSION-n1-$KERNEL_VERSION-$VERSION_TAG.img.gz"
           else
-             mv "$FILE" "${{ env.PACKAGED_OUTPUTPATH }}/immortalwrt-$LUCI_VERSION-phicomm-n1-btrfs-$KERNEL_VERSION-$VERSION_TAG.img.gz"
+             # 格式：iwrt-24.10.6-n1-k6.6.93-26.06.1.img.gz
+             mv "$FILE" "${{ env.PACKAGED_OUTPUTPATH }}/iwrt-$LUCI_VERSION-n1-$KERNEL_VERSION-$VERSION_TAG.img.gz"
           fi
-
+          
       - name: Upload firmware to GitHub Releases
         uses: softprops/action-gh-release@v2.2.1
         with:
-          tag_name: phicomm-n1-${{ env.VERSION_TAG }}
-          name: ImmortalWrt for Phicomm N1 [${{ env.VERSION_TAG }}]
+          tag_name: n1-${{ env.VERSION_TAG }}
+          name: iWrt for Phicomm N1 [${{ env.VERSION_TAG }}]
           body_path: ${{ github.workspace }}/n1/info1.md
           files: |
             ${{ env.PACKAGED_OUTPUTPATH }}/*.img.gz
